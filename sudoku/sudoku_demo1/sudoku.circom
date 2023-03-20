@@ -1,7 +1,12 @@
 pragma circom 2.1.4;
 
+//a sudoku demo with 9x9
+
+
+
+
 // template NonEqual
-// Check (in0 - in1) is non-zero
+// Check (in0 - in1) is non-zero(which means in0 non equal to in1)
 template NonEqual(){
     signal input in0;
     signal input in1;
@@ -68,7 +73,7 @@ template Sudoku(n){
     //check puzzle array and solution array agree
     for(var i =0 ;i<n;i++){
         for(var j=0;j<n;j++){
-            // either puzzle_cell = 0(blank cell) or puzzle_cell = solution_cell
+            // either puzzle_cell = 0(which means blank cell) or puzzle_cell = solution_cell
             puzzle[i][j] *(puzzle[i][j] - solution[i][j]) === 0;
         }
     }
