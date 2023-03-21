@@ -29,24 +29,24 @@ template rangeCheck(){
 //template idChecker
 //Check input id Number is vaild
 template idChecker(){
-    signal input in[18];
+    signal input id[18];
     component inRange[18];
 
     //check all elements in id number is in range [0,10]
-    for(var i =0;i<18;i++){
+    for(var i = 0;i<18;i++){
         inRange[i] = rangeCheck();
-        inRange[i].in <== in[i];
+        inRange[i].in <== id[i];
     }
     
     //check flag is vaild
     var weight[18] = [3,7,0,6,8,3,1,9,8,9,0,1,1,1,7,6,5,7];
     var checkSum = 0;
     for (var i=0 ;i<18;i++){
-        checkSum = checkSum + in[i]*weight[i];
+        checkSum = checkSum + id[i]*weight[i];
     }
-    var rem = 0;
-    rem = checkSum % 11;
+    signal rem;
+    rem <-- checkSum % 11;
     rem === 1;
 }
 
-component main {public[in]} = idChecker();
+component main {public[id]} = idChecker();
