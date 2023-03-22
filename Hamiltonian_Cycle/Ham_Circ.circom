@@ -7,19 +7,6 @@ template CheckBit(){
     in * (1 - in) === 0;
 }
 
-// template Distinct
-// Check that only one element in the row and column where the element is located is non zero
-template IsOne(n){
-    signal input row[n];
-    signal input col[n];
-    var tmp = 0;
-    for(var i =0;i<n;i++) { tmp = tmp + row[i];}
-    for(var i =0;i<n;i++) { tmp = tmp + col[i];}
-    signal sum;
-    sum <-- tmp;
-    sum * sum === 1;
-}
-
 // template HamiltonianCycle
 // Check witness is satisfied
 template HamiltonianCycle(n){
@@ -59,7 +46,7 @@ template HamiltonianCycle(n){
     var tmp[n];
     for(var i = 0;i<n;i++){
         tmp[i] = 0;
-        //log(index[i][0],index[i][1]);
+        //log("Current index:",index[i][0],index[i][1]);
         for(var j = 0;j<n;j++){
             var _row = index[i][0];
             tmp[i] = tmp[i] + witness[_row][j];
@@ -68,19 +55,18 @@ template HamiltonianCycle(n){
             var _col = index[i][1];
             tmp[i] = tmp[i] + witness[j][_col];
         }
-        tmp[i] = tmp[i] -1;
+        tmp[i] = tmp[i] - 1;
         //log(tmp[i]);
         sum[i] <-- tmp[i];
         sum[i] * sum[i] === 1;
     }
 
-    // check that there is a circuit in the witness
-    // incomplete
+    // check that there is a circle in the witness
     signal IsCircuit[n];
     for(var i = 0;i<n-1;i++){
         IsCircuit[i] <-- (index[i][1] - index[i+1][0]);
         IsCircuit[i] === 0;
-        //log(IsCircuit[i]);
+        //log("constraint value:",IsCircuit[i]);
     }
     IsCircuit[n-1] <-- (index[n-1][1] - index[0][0]);
     IsCircuit[n-1] === 0;
