@@ -2,9 +2,6 @@ pragma circom 2.1.4;
 
 //a sudoku demo with 9x9
 
-
-
-
 // template NonEqual
 // Check (in0 - in1) is non-zero(which means in0 non equal to in1)
 template NonEqual(){
