@@ -36,32 +36,18 @@ template Bits2(){
 // Check every entries in witness is in range {1,2,3}
 template CheckRange(){
     signal input in;
-    component lowerBound = Bit2();
-    component upperBound = Bit2();
+    component lowerBound = Bits2();
+    component upperBound = Bits2();
     lowerBound.in <== in - 1;
     upperBound.in <== in;
 }
-
-
-// template Distinct
-// Check relevant nodes is distinct
-template Distinct(){
-    signal input left;
-    signal input right;
-
-    component check = NonEqual();
-    check.in0 <== left;
-    check.in1 <== right;
-}
-
-
 
 // template IsColorable
 // Check witness is a correct color scheme
 // input Graph represent by adjacency form
 template IsColorable(n){
     signal input Graph[n][n];
-    signal witness[n];
+    signal input witness[n];
 
     //check instance and witness are well form
     component Graph_isBit[n][n];
@@ -76,18 +62,40 @@ template IsColorable(n){
         }
     }
 
-    component isDistince[n][n];
-    for(var i = 0;i<n;i++){
+    var length = (n*(n+1))/2;
+    var index[length][2];
+    var count = 0;
+    for(var i = 0;i<=n-1;i++){
         for(var j = 0;j<=i;j++){
             if(Graph[i][j] == 1){
-                isDistince[i][j] = Distinct();
-                isDistince[i][j].left <== witness[i];
-                isDistince[i][j].right <== witness[j];
+                //log(i,j,Graph[i][j]);
+                index[count][0] = i;
+                index[count][1] = j;
+                count = count + 1;
+
+            }
+            else{
+                index[count][0] = 1;
+                index[count][1] = 2;
+                count = count + 1;
             }
         }
     }
+    component isNonEqual[length];
+    signal row[length];
+    signal col[length];
+    //var row,col;
+    for(var i=0;i<length;i++){
+        isNonEqual[i] = NonEqual();
+        var a = index[i][0];
+        var b = index[i][1];
+        //log(a,b);
+        row[i] <-- witness[a];
+        col[i] <-- witness[b];
 
+        isNonEqual[i].in0 <== row[i];
+        isNonEqual[i].in1 <== col[i];
+    }
 }
 
-
-component main {public[Graph]} = IsColorable(6);
+component main {public[Graph]} = IsColorable(5);
