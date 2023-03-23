@@ -16,9 +16,11 @@ some circuit demo,develop by circom 2.1.x
 ![image-20230322093303471](README.assets/image-20230322093303471.png)
 
 然后检查makefile文件，确保power参数与电路约束数量满足下列等式（make文件中默认写的是11，也即电路中约束数量最大为2048个）
+
 $$
 2^{power} \le Constraints
 $$
+
 make文件用于windows平台，Linux平台需要将最后的`del`命令修改为`rm -f`，其余命令可自行修改
 
 ## Others
