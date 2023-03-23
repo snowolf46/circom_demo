@@ -13,6 +13,7 @@ pb_js = circuit_name_public.json
 pf_js = circuit_name_proof.json
 js_dir = circuit_name_js
 power = 9
+hash_power = 10 
 prove_outputs = $(pf_js) $(pb_js)
 zkey_waste = $(wildcard *.zkey)
 ptau_waste = $(wildcard *.ptau)
@@ -29,14 +30,14 @@ $(ptau) :
 	snarkjs powersoftau new bn128 $(power) pot12_0000.ptau -v
 	snarkjs powersoftau contribute pot12_0000.ptau pot12_0001.ptau --name="First contribution" -v -e="some random text"
 	snarkjs powersoftau contribute pot12_0001.ptau pot12_0002.ptau --name="Second contribution" -v -e="some random text"
-	snarkjs powersoftau beacon pot12_0002.ptau pot12_beacon.ptau 1cbf6603d6ff9ba4e1d15d0fd83be3a80bca470b6a43a7f9055204e860298f99 10 -n="Final Beacon"
+	snarkjs powersoftau beacon pot12_0002.ptau pot12_beacon.ptau 1cbf6603d6ff9ba4e1d15d0fd83be3a80bca470b6a43a7f9055204e860298f99 $(hash_power) -n="Final Beacon"
 	snarkjs powersoftau prepare phase2 pot12_beacon.ptau $(ptau) -v
 
 $(keys) : $(ptau) $(r1cs)
 	snarkjs groth16 setup $(r1cs) $(ptau) circuit_0000.zkey
 	snarkjs zkey contribute circuit_0000.zkey circuit_0001.zkey --name="First contribution Name" -v -e="First random entropy"
 	snarkjs zkey contribute circuit_0001.zkey circuit_0002.zkey --name="Second contribution Name" -v -e="Another random entropy"
-	snarkjs zkey beacon circuit_0002.zkey $(pk) 1cbf6603d6ff9ba4e1d15d0fd83be3a80bca470b6a43a7f9055204e860298f99 10 -n="Final Beacon phase2"
+	snarkjs zkey beacon circuit_0002.zkey $(pk) 1cbf6603d6ff9ba4e1d15d0fd83be3a80bca470b6a43a7f9055204e860298f99 $(hash_power) -n="Final Beacon phase2"
 	snarkjs zkey export verificationkey $(pk) $(vk)
 
 $(prove_outputs) : $(wasm) $(circ_input) $(pk)
