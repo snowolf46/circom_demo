@@ -37,8 +37,6 @@ template HamiltonianCycle(n){
             }
         }
         k = index[i][1];
-        //log("The value of index is",index[i][0],index[i][1]);
-        //log("The value of k is",k);
     }
 
     // check that only one element in the row and column where the element is located is non zero
@@ -46,7 +44,7 @@ template HamiltonianCycle(n){
     var tmp[n];
     for(var i = 0;i<n;i++){
         tmp[i] = 0;
-        //log("Current index:",index[i][0],index[i][1]);
+
         for(var j = 0;j<n;j++){
             var _row = index[i][0];
             tmp[i] = tmp[i] + witness[_row][j];
@@ -56,7 +54,7 @@ template HamiltonianCycle(n){
             tmp[i] = tmp[i] + witness[j][_col];
         }
         tmp[i] = tmp[i] - 1;
-        //log(tmp[i]);
+
         sum[i] <-- tmp[i];
         sum[i] * sum[i] === 1;
     }
@@ -66,7 +64,6 @@ template HamiltonianCycle(n){
     for(var i = 0;i<n-1;i++){
         IsCircuit[i] <-- (index[i][1] - index[i+1][0]);
         IsCircuit[i] === 0;
-        //log("constraint value:",IsCircuit[i]);
     }
     IsCircuit[n-1] <-- (index[n-1][1] - index[0][0]);
     IsCircuit[n-1] === 0;
