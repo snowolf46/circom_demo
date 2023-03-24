@@ -62,7 +62,7 @@ template Merkle_Tree(n){
         check_node_length[i].node <== intermedia_node[i-1];
     }
     
-    // check all node hash is well form
+    // check all intermedia hash is well form
     signal intermedia_hash[n+1];
     component intermedia_poseidon[n];
     component mux[n];
