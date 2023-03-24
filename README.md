@@ -23,6 +23,9 @@ $$
 
 make文件用于windows平台，Linux平台需要将最后的`del`命令修改为`rm -f`，其余命令可自行修改
 
+## Warning
+1. Iteration_Hashing.circom中的迭代次数（n值）不宜设置的过大，否则会因为内存不足导致电路无法生成，经测试，n=10与n=30时的最大内存开销分别约为1GB与5GB，请谨慎设置迭代次数（内存足够请忽略本警告）
+
 ## Others
 
 1. makefile文件中的contribute命令中的random text和beacon命令中的随机信标值可以随意修改，命令的执行次数也可以随意添加或删除
