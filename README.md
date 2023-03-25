@@ -28,7 +28,7 @@ make文件用于windows平台，Linux平台需要将最后的`del`命令修改�
 
 ## Warning
 1. Iteration_Hashing.circom中采用的Hash算法为SHA256，由于SHA256中的约束条件非常多，因此电路的迭代次数（n值）不宜设置的过大，否则会因为内存不足导致电路无法生成，经测试，n=10与n=30时的最大内存开销分别约为1GB与5GB，请谨慎设置迭代次数（内存足够请忽略本警告）
-2. [] 接1，后续考虑编写新的迭代Hash电路，将SHA256替换成更适合ZKP系统的Poseidon Hash
+2. [Todo]接1，后续考虑编写新的迭代Hash电路，将SHA256替换成更适合ZKP系统的Poseidon Hash
 
 ## Others
 
