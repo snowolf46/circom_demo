@@ -150,15 +150,14 @@ template Permutation(){
 // template Plaintext_Process
 // parameter n: Numbers of plaintext blocks
 // input State: Ascon intermedia state
-// input round: Permutation round
-// input    PT: Plaintext
+// input plaintext: Plaintext
+// output ciphertext:
 
 // Ascon-128 block size is of 8 bytes(rate = 8 bytes)
 // Assume plaintext has been properly preprocessed(the last block of plaintext has been padded)
 
 template Plaintext_Process(n){
     signal input State[5];
-    signal input round;
     signal input plaintext[n];
     signal output ciphertext[n];
 
@@ -188,7 +187,6 @@ template Plaintext_Process(n){
     for(var i = 0;i < n - 1;i++){
         intermediaState[0] ^= plaintext[i];
         ct[i] = intermediaState[0]; 
-        if(DEBUG_PLAINTEXT_FLAG) log("Ciphertext", i, ct[i]);
         
         //update intermedia state
         intermedia_pem[i] = Permutation();
@@ -196,17 +194,98 @@ template Plaintext_Process(n){
         for(var j = 0;j < 5;j++) intermediaState[j] = intermedia_pem[i].out[j];
     }
 
-
     // process last block
     intermediaState[0] ^= plaintext[n-1];
     ct[n-1] = intermediaState[0];
     if(DEBUG_PLAINTEXT_FLAG) log("Ciphertext", n-1, ct[n-1]);
 
-
-    
+    //output ciphertext
+    for(var i = 0;i < n;i++){
+        ciphertext[i] <-- ct[i];
+        if(DEBUG_PLAINTEXT_FLAG) log("Ciphertext", i, ct[i]);
+    }
 }
 
 
 
+// template Ciphertext_Process
+// parameter n: Numbers of ciphertext blocks
+// input State: Ascon intermedia state
+// input ciphertext: 
+// output plaintext:
 
-component main{public[State]} = Plaintext_Process(10);
+// Ascon-128 block size is of 8 bytes(rate = 8 bytes)
+// Assume plaintext has been properly preprocessed(the last block of plaintext has been padded)
+
+template Ciphertext_Process(n){
+    signal input State[5];
+    signal input ciphertext[n];
+    signal output plaintext[n];
+
+    var DEBUG_CIPHERTEXT_FLAG = 0;
+
+    var intermediaState[5];
+    var pt[n];
+    component intermedia_pem[n];
+
+    //ciphertext padding
+    var lastlen = 0;
+    component pad_len = len();
+    pad_len.in <== ciphertext[n-1];
+    lastlen = pad_len.out; //padding length(bytes)
+    var last_block = (ciphertext[n-1] << 8 * lastlen); // padding few bits '0'
+    if(DEBUG_CIPHERTEXT_FLAG) {
+        log("last block:", ciphertext[n-1]);
+        log("last length:", lastlen);
+        log("padded block:", last_block);
+    }
+    
+    // init intermedia state
+    for(var i =0;i < 5;i++) intermediaState[i] = State[i];
+
+    //process first t-1 blocks
+    var Ci;
+    for(var i = 0;i < n - 1;i++){
+       Ci = ciphertext[i];
+       pt[i] = intermediaState[0] ^ Ci;
+       intermediaState[0] = Ci;
+       
+       //update intermedia state
+        intermedia_pem[i] = Permutation();
+        for(var j = 0;j < 5;j++) intermedia_pem[i].State[j] <-- intermediaState[j];
+        for(var j = 0;j < 5;j++) intermediaState[j] = intermedia_pem[i].out[j];
+    }
+
+    // process last block
+    var ct_padding = 128 << (56 - 8 * lastlen); // ct_padding = 128 << 8 * (8 - lastlen - 1)
+    var c_mask = 18446744073709551615 >> (8 * lastlen); // 0xFFFF FFFF FFFF FFFF = 18446744073709551615
+    Ci = last_block >> (8 * lastlen);
+    pt[n-1] = Ci ^ (intermediaState[0] >> (8 * lastlen));
+    pt[n-1] = pt[n-1] >> (8 * lastlen);
+    intermediaState[0] = Ci ^ (intermediaState[0] & c_mask) ^ ct_padding;
+    if(DEBUG_CIPHERTEXT_FLAG){
+        log("ct_padding:", ct_padding);
+        log("c_mask:", c_mask);
+        log("Ci:", Ci);
+        log("last plaintext:", pt[n-1]);
+    }
+
+    //output plaintext
+    for(var i = 0;i < n;i++){
+        if(DEBUG_CIPHERTEXT_FLAG) log("Plaintext", i, pt[i]);
+        plaintext[i] <-- pt[i];
+    }
+}
+
+
+// template finalize
+// Ascon finalization phase,an internal helper function
+// input State:
+// input Key: Ascon-128 key is of size 128 bits
+// output : tag(size 128 bits)
+
+// Ascon-128 finalization phase permutation round a = 12
+// Ascon-128 block size is of 8 bytes(rate = 8 bytes)
+// Ascon finalization phase also update its intermedia state
+
+component main{public[State]} = Ciphertext_Process(10);
