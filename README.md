@@ -28,13 +28,13 @@ make文件用于windows平台，Linux平台需要将最后的`del`命令修改�
 2. 部分电路中有关于input的说明文件`README.md`，测试时请先阅读对应说明文件
 
 ## Task List
-1. [Done] 数独电路（Sudoku）
-2. [Done] 验证身份证正确性（仅验证校验位是否合法）（misc\inChecker）
-3. [Done] 哈密顿回路（Hamiltonian_Cycle）
-4. [Done] 图的三着色问题（3Colors）
-5. [Done] 迭代计算Hash - SHA256（Iteration_Hashing）
-6. [Done] 迭代计算Hash - Poseidon（Iteration_Poseidon） 
-7. [Ongoing] Ascon(NIST version)的circom实现
+1. ~~[Done] 数独电路（Sudoku）~~
+2. ~~[Done] 验证身份证正确性（仅验证校验位是否合法）（misc\inChecker）~~
+3. ~~[Done] 哈密顿回路（Hamiltonian_Cycle）~~
+4. ~~[Done] 图的三着色问题（3Colors）~~
+5. ~~[Done] 迭代计算Hash - SHA256（Iteration_Hashing）~~
+6. ~~[Done] 迭代计算Hash - Poseidon（Iteration_Poseidon） ~~
+7. ~~[Ongoing] Ascon(NIST version)的circom实现~~
 8. [Todo] 国密SM2/3/4算法的circom实现
 9. [Todo] 祖冲之算法的circom实现
 10. [Todo] AES算法的circom实现
