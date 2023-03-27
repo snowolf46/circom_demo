@@ -1,0 +1,4 @@
+*.wtns
+*.js
+*.r1cs
+*.wasm
