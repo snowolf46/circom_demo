@@ -1,4 +1,4 @@
-*.wtns
-*.js
-*.r1cs
-*.wasm
+**.wtns
+**.js
+**.r1cs
+**.wasm
