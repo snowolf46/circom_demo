@@ -27,6 +27,19 @@ make文件用于windows平台，Linux平台需要将最后的`del`命令修改�
 1. circomlib的SHA256模板中，sha256_2中好像有点问题，输入要求是长度为216 bits的串，不是很理解为什么这样写（为什么不是256 bits），可以考虑使用Poseidon Hash
 2. 部分电路中有关于input的说明文件`README.md`，测试时请先阅读对应说明文件
 
+## Task List
+1. [Done] 数独电路（Sudoku）
+2. [Done] 验证身份证正确性（仅验证校验位是否合法）（misc\inChecker）
+3. [Done] 哈密顿回路（Hamiltonian_Cycle）
+4. [Done] 图的三着色问题（3Colors）
+5. [Done] 迭代计算Hash - SHA256（Iteration_Hashing）
+6. [Done] 迭代计算Hash - Poseidon（Iteration_Poseidon） 
+7. [Ongoing] Ascon(NIST version)的circom实现
+8. [Todo] 国密SM2/3/4算法的circom实现
+9. [Todo] 祖冲之算法的circom实现
+10. [Todo] AES算法的circom实现
+
+
 ## Warning
 1. Iteration_Hashing.circom中采用的Hash算法为SHA256，由于SHA256中的约束条件非常多，因此电路的迭代次数（n值）不宜设置的过大，否则会因为内存不足导致无法完成电路编译，经测试，n=10与n=30时的最大内存开销分别约为1GB与5GB，请谨慎设置迭代次数（内存足够请忽略本警告）
 2. Iteration_Poseidon.circom中将SHA256替换成更适合ZKP系统的Poseidon Hash，经测试，当迭代次数（n值）为1000时，电路编译时的峰值内存开销约为1GB，此时得到的约束数量在$10^5$数量级，优于上述SHA256的方案，适用于迭代次数较大的证明
