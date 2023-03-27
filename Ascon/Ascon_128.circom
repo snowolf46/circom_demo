@@ -27,6 +27,13 @@ template Bits4(){
     bitsum === in;
 }
 
+// Ascon finalize depart key to left and right,both of size 64 bits
+// we want to get the right half of the original key
+// but we can not left shift then right shift due to circom use large prime with length 254 bits
+// the solution is use rotate right shift
+// first,shift the right half of key to the left side
+// then, right shift 64 bits to get the left
+
 // template ror
 // implement right rotate shift
 // input state: right rotate shift register
@@ -35,8 +42,23 @@ template ror(){
     signal input state;
     signal input length;
     signal output out;
-    var tmp = (state >> length) | (state & (1<<length) - 1 << (64 - length));
-    out <-- tmp;
+    var DEBUG = 0;
+
+    var res;
+    var tmp[3];
+    tmp[0] = state >> length;
+    tmp[1] = state & (1 << length) - 1;
+    tmp[2] = tmp[1] << (128 - length);
+    res = tmp[0] | tmp[2];
+    
+    if(DEBUG){
+        log("tmp0",tmp[0]);
+        log("tmp1",tmp[1]);
+        log("tmp2",tmp[2]);
+        log("res",res); 
+    }
+
+    out <-- res;
 }
 
 // template len
@@ -56,24 +78,27 @@ template len(){
     out <-- count;
 }
 
+// template keylen
+// check Ascon key length is of 128
+// input key:Ascon key
+template keylen(){
+    signal input key;
+    key >> 127 === 1;
+    key >> 128 === 0;
+}
+
 // ===== some help function =====
 
 // template Permutaion
 // input State: Ascon initial/intermedia state, include 5 register of size 64-bits
 // input round: permutation iteration round(Ascon-128 round = 6)
 template Permutation(){
-    //signal input round;
+    signal input round;
     signal input State[5];
+    signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
     signal output out[5];
-    var round = 6;
-    var DEBUG_PERMUTATION_FLAG = 0;
-
-/*     // check 1 <= round  <= 12
-    if(DEBUG_PERMUTATION_FLAG) log("Round:", round);
-    component lowerBound = Bits4();
-    component upperBound = Bits4();
-    lowerBound.in <== round - 1;
-    upperBound.in <== round + 3; */
+    // var round = 6;
+    var DEBUG_PERMUTATION_FLAG = IS_DEBUG; // log debug info if flag == 1
 
     // check all State registers are of size 64 bits
     signal checkState[5];
@@ -83,6 +108,13 @@ template Permutation(){
         checkState[i] === 0;
     }
 
+    // check 1 <= round  <= 12
+    if(DEBUG_PERMUTATION_FLAG) log("Round:", round);
+    component lowerBound = Bits4();
+    component upperBound = Bits4();
+    lowerBound.in <== round - 1;
+    upperBound.in <== round + 3;
+
     // permutation
     var roundConstant = 0;
     var intermediaState[5];
@@ -91,7 +123,7 @@ template Permutation(){
         intermediaState[i] = State[i];
     }
     
-    for (var i = 6;i < 12;i++){
+    for (var i = 12 - round;i < 12;i++){
         // add round constant layer
         roundConstant = 240 - i * 16 + i;
         if(DEBUG_PERMUTATION_FLAG) log("add round constant:", roundConstant);
@@ -159,9 +191,10 @@ template Permutation(){
 template Plaintext_Process(n){
     signal input State[5];
     signal input plaintext[n];
+    signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
     signal output ciphertext[n];
 
-    var DEBUG_PLAINTEXT_FLAG = 0;
+    var DEBUG_PLAINTEXT_FLAG = IS_DEBUG;   // log debug info if flag == 1
 
     var intermediaState[5];
     var ct[n];
@@ -220,10 +253,10 @@ template Plaintext_Process(n){
 template Ciphertext_Process(n){
     signal input State[5];
     signal input ciphertext[n];
+    signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
     signal output plaintext[n];
 
-    var DEBUG_CIPHERTEXT_FLAG = 0;
-
+    var DEBUG_CIPHERTEXT_FLAG = IS_DEBUG;  // log debug info if flag == 1
     var intermediaState[5];
     var pt[n];
     component intermedia_pem[n];
@@ -278,7 +311,7 @@ template Ciphertext_Process(n){
 }
 
 
-// template finalize
+// template Finalize
 // Ascon finalization phase,an internal helper function
 // input State:
 // input Key: Ascon-128 key is of size 128 bits
@@ -287,5 +320,100 @@ template Ciphertext_Process(n){
 // Ascon-128 finalization phase permutation round a = 12
 // Ascon-128 block size is of 8 bytes(rate = 8 bytes)
 // Ascon finalization phase also update its intermedia state
+// todo
+template Finalize(){
+    signal input State[5];
+    signal input Key;
+    signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
 
-component main{public[State]} = Ciphertext_Process(10);
+    var intermediaState[5];
+    var DEBUG_FINALIZE_FLAG = IS_DEBUG;    //log debug info if flag == 1
+
+    // check input key is of length 128
+    component check_key = keylen();
+    check_key.key <== Key;
+
+    // init intermedia state
+    for(var i =0;i < 5;i++) intermediaState[i] = State[i];
+
+    // depart origin key into left and right part
+    var key[2];
+    component shift_key = ror();
+    shift_key.state <== Key;
+    shift_key.length <== 64;
+    key[0] = Key >> 64; // left half of the original key
+    key[1] = shift_key.out >> 64; // right half of the original key
+    
+
+    intermediaState[1] ^= (key[0]);
+    intermediaState[2] ^= (key[1]);
+
+    
+    //intermediaState[2] ^= (Key  )
+
+}
+
+// template Initialize
+// Ascon initialize step
+// input Key:
+// input nonce:
+// output updated State
+
+// Ascon-128 IV == 0x80400c0600000000,which is 9241399655273594880 in decimal
+// Ascon-128 round a = 12,b = 6
+// Ascon-128 nonce is of length 128 bits
+template Initialize(){
+    signal input Key;
+    signal input nonce;
+    signal input IS_DEBUG;
+    signal output State[5];
+
+    var DEBUG_INITIALIZE_FLAG = IS_DEBUG;
+    var intermediaState[5];
+    
+    // initial ascon state
+    var _key[2];
+    var _nonce[2];
+    var IV;
+    component shift[2];
+    
+    shift[0].state <== Key;
+    shift[1].state <== nonce;
+    shift[0].length <== 64;
+    shift[1].length <== 64;
+
+    _key[0] = Key >> 64;
+    _key[1] = shift[0].out;
+    _nonce[0] = nonce >> 64;
+    _nonce[1] = shift[1].out;
+    IV = 9241399655273594880;
+
+    intermediaState[0] = _key[0];
+    intermediaState[1] = _key[1];
+    intermediaState[2] = _nonce[0];
+    intermediaState[3] = _nonce[1];
+    intermediaState[4] = IV;
+    if(DEBUG_INITIALIZE_FLAG){
+        for(var i = 0;i < 5;i++) log("Initial value", i, intermediaState[i]);
+    }
+
+    // apply a = 12 rounds permutation
+    component initialize_permutation = Permutation();
+    initialize_permutation.round <-- 12;
+    initialize_permutation.IS_DEBUG <-- 1;
+    for(var i = 0;i < 5;i++) initialize_permutation.State[i] <-- intermediaState[i];
+    
+    // apply key XOR
+    var zero_key[5];
+    zero_key[0] = 0;
+    zero_key[1] = 0;
+    zero_key[2] = 0;
+    zero_key[3] = _key[0];
+    zero_key[4] = _key[1];
+    for(var i = 0;i < 5;i++){
+        State[i] <-- zero_key[i] ^ initialize_permutation.out[i];
+        if(DEBUG_INITIALIZE_FLAG) log("Initialed State", i, State[i]);
+    }
+}
+
+component main{public[round]} = Permutation();
