@@ -282,7 +282,7 @@ template Ciphertext_Process(n){
 
     //process first t-1 blocks
     var Ci;
-    for(var i = 0;i < n - 1;i++){
+    for(var i = 0;i < n;i++){
        Ci = ciphertext[i];
        pt[i] = intermediaState[0] ^ Ci;
        intermediaState[0] = Ci;
@@ -295,7 +295,7 @@ template Ciphertext_Process(n){
         for(var j = 0;j < 5;j++) intermediaState[j] = intermedia_pem[i].out[j];
     }
 
-    // process last block
+    /* // process last block
     var ct_padding = 128 << (56 - 8 * lastlen); // ct_padding = 128 << 8 * (8 - lastlen - 1)
     var c_mask = 18446744073709551615 >> (8 * lastlen); // 0xFFFF FFFF FFFF FFFF = 18446744073709551615
     Ci = last_block >> (8 * lastlen);
@@ -307,7 +307,7 @@ template Ciphertext_Process(n){
         log("c_mask:", c_mask);
         log("Ci:", Ci);
         log("last plaintext:", pt[n-1]);
-    }
+    } */
 
     //output plaintext
     for(var i = 0;i < n;i++){
@@ -351,9 +351,9 @@ template Initialize(){
     shift[1].length <== 64;
 
     _key[0] = Key >> 64;
-    _key[1] = shift[0].out;
+    _key[1] = shift[0].out >> 64;
     _nonce[0] = nonce >> 64;
-    _nonce[1] = shift[1].out;
+    _nonce[1] = shift[1].out >> 64;
     IV = 9241399655273594880;
 
     intermediaState[0] = _key[0];
@@ -398,15 +398,14 @@ template Ascon_Enc(n){
     signal input nonce;
     signal input plaintext[n];
     signal input IS_DEBUG;
-    //signal input associateddata
     signal output ct[n];
     signal output tag;
 
     //check key length is of size 128 bits
-    component check_key = keylen();
-    component check_nonce = keylen();
-    check_key.key <== Key;
-    check_nonce.key <== nonce;
+    //component check_key = keylen();
+    //component check_nonce = keylen();
+    //check_key.key <== Key;
+    //check_nonce.key <== nonce;
 
     //Ascon Initial phase
     component Init = Initialize();
@@ -425,9 +424,12 @@ template Ascon_Enc(n){
     for(var i = 0;i < n;i++) enc.plaintext[i] <-- plaintext[i];
     for(var i = 0;i < n;i++) ct[i] <-- enc.ciphertext[i];
 
-    // component tag = Finalize();
-    //TODO
-    //
+    component calc_tag = Finalize();
+    calc_tag.Key <-- Key;
+    calc_tag.IS_DEBUG <-- IS_DEBUG;
+    for(var i = 0;i < 5;i++) calc_tag.State[i] <-- intermediaState[i];
+
+    tag <-- calc_tag.tag;
 }
 
 
@@ -445,16 +447,16 @@ template Ascon_Dec(n){
     signal input nonce;
     signal input ciphertext[n];
     signal input IS_DEBUG;
-    signal input ct_tag;
+    signal input tag;
     //signal input associateddata
     signal output pt[n];
-    signal output tag;
+    //signal output tag;
 
     //check key length is of size 128 bits
-    component check_key = keylen();
-    component check_nonce = keylen();
-    check_key.key <== Key;
-    check_nonce.key <== nonce;
+    //component check_key = keylen();
+    //component check_nonce = keylen();
+    //check_key.key <== Key;
+    //check_nonce.key <== nonce;
 
     //Ascon Initial phase
     component Init = Initialize();
@@ -473,9 +475,14 @@ template Ascon_Dec(n){
     for(var i = 0;i < n;i++) dec.ciphertext[i] <-- ciphertext[i];
     for(var i = 0;i < n;i++) pt[i] <-- dec.plaintext[i];
 
-    // component calc_tag = Finalize();
-    // tag <-- calc.tag
-    // tag === ct_tag;
+    component calc_tag = Finalize();
+    calc_tag.Key <--  Key;
+    calc_tag.IS_DEBUG <-- IS_DEBUG;
+    for(var i = 0;i < 5;i++) calc_tag.State[i] <-- intermediaState[i];
+
+    calc_tag.tag === tag;
+    //tag <-- calc.tag;
+    //tag === ct_tag;
 }
 
 // template Associated_data
@@ -491,9 +498,41 @@ template Associated_data(n){
     signal input State[5];
     signal input Key;
     signal input Associateddata[n];
+    signal input IS_DEBUG;
     signal output out[5];
 
-    //TODO
+    // get last associate data length(bits)
+    component pad = len();
+    pad.in <-- Associateddata[n-1];
+    var pad_len = 64 - pad.out;
+
+    //padding last associate data
+    var tmp = (Associateddata[n-1] << 1) | 1;
+    tmp = tmp << (pad_len - 1);
+
+    // init intermedia state
+    var intermediaState[5];
+    if(IS_DEBUG) log("init associate intermedia state");
+    for(var i = 0;i < 5;i++) intermediaState[i] = State[i];
+
+    component asso_pem[n];
+    for(var i = 0;i < n;i++){
+        intermediaState[0] ^= Associateddata[i];
+        asso_pem[i] = Permutation();
+        asso_pem[i].round <-- 6;
+        for(var j = 0;j < 5;j++) asso_pem[i].State[j] <-- intermediaState[j];
+        asso_pem[i].IS_DEBUG <-- IS_DEBUG;
+        for(var j = 0;j < 5;j++) intermediaState[j] = asso_pem.out[j];
+    }
+    intermediaState[4] ^= 1;
+
+    // output associated intermedia state
+    for(var i = 0;i < 5;i++) out[i] <-- intermediaState[i];
+
+    if(IS_DEBUG){
+        log("process associated data:");
+        for(var i = 0;i < 5;i++) log("associate state", i, intermediaState[i]);
+    }
 }
 
 
@@ -517,8 +556,8 @@ template Finalize(){
     var DEBUG_FINALIZE_FLAG = IS_DEBUG;    //log debug info if flag == 1
 
     // check input key is of length 128
-    component check_key = keylen();
-    check_key.key <== Key;
+    //component check_key = keylen();
+    //check_key.key <== Key;
 
     // init intermedia state
     for(var i = 0;i < 5;i++) intermediaState[i] = State[i];
@@ -556,4 +595,118 @@ template Finalize(){
 }
 
 
-component main{public[IS_DEBUG]} = Finalize();
+// template ascon encrypt
+// this template work with associate data
+// test all ascon functions correct
+// TODO
+template Encrypt_with_associate_data(pt_len,asso_len){
+    signal input pt[pt_len];
+    signal input associated_data[asso_len];
+    //signal input DEBUG_FLAG;
+    signal input Key;
+    signal input nonce;
+    signal output ct[pt_len];
+    signal output tag;
+
+    var intermediaState[5];
+    var DEBUG_FLAG = 1;
+
+    //TODO
+}
+
+
+// template ascon encrypt
+// this template work without associated data
+// test all ascon functions correct
+
+/*
+
+input plaintext
+ct 0 5647439025829712524
+ct 1 15491740990023129785
+ct 2 14829341721340353458
+ct 3 15069444835503358622
+ct 4 3057183473229790115
+ct 5 6807858016697457348
+ct 6 15321001916064785207
+ct 7 13730222884538632949
+ct 8 2078820881980977588
+ct 9 9746548211320361175
+
+*/
+template Encrypt_without_associate_data(pt_len){
+    signal input pt[pt_len];
+    signal input Key;
+    signal input nonce;
+    signal output ct[pt_len];
+    signal output tag;
+
+    var intermediaState[5];
+    //var DEBUG_FLAG = 1;
+
+    component enc = Ascon_Enc(pt_len);
+    enc.Key <-- Key;
+    enc.nonce <-- nonce;
+    enc.plaintext <-- pt;
+    enc.IS_DEBUG <-- 1;
+
+    for(var i = 0; i< pt_len;i++){
+        ct[i] <-- enc.ct[i];
+        log("ct", i, ct[i]);
+    }
+    tag <-- enc.tag;
+    log("tag", tag);
+}
+
+
+// template ascon decrypt
+// this template work without associated data
+// test all ascon functions correct
+
+
+/* 
+
+output plaintext
+pt 0 9383393164308514233
+pt 1 17963167468181433617
+pt 2 4886746970379862863
+pt 3 4017053540049974332
+pt 4 15824156029553402712
+pt 5 5086391180707298578
+pt 6 18000333214773944713
+pt 7 3267465482706469569
+pt 8 18228012312943073856
+pt 9 0
+
+*/
+
+template Decrypt_without_associate_data(ct_len){
+    signal input ct[ct_len];
+    signal input Key;
+    signal input nonce;
+    signal input tag;
+    signal output pt[ct_len];
+    //signal output tag;
+
+    var intermediaState[5];
+    //var DEBUG_FLAG = 1;
+
+    component dec = Ascon_Dec(ct_len);
+    dec.Key <-- Key;
+    dec.nonce <-- nonce;
+    dec.ciphertext <-- ct;
+    dec.tag <-- tag;
+    dec.IS_DEBUG <-- 1;
+
+    for(var i = 0; i < ct_len;i++){
+        pt[i] <-- dec.pt[i];
+        log("pt", i, pt[i]);
+    }
+    //tag <-- enc.tag;
+    log("tag", tag);
+}
+
+
+// template ascon decrypt
+
+component main{public[ct]} = Decrypt_without_associate_data(10);
