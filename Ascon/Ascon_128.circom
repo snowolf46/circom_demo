@@ -83,8 +83,10 @@ template len(){
 // input key:Ascon key
 template keylen(){
     signal input key;
-    key >> 127 === 1;
-    key >> 128 === 0;
+    signal one <-- key >> 127;
+    signal zero <-- key >> 128;
+    one * one === 1;
+    zero * zero === 0;
 }
 
 // ===== some help function =====
@@ -223,6 +225,8 @@ template Plaintext_Process(n){
         
         //update intermedia state
         intermedia_pem[i] = Permutation();
+        intermedia_pem[i].round <-- 6;
+        intermedia_pem[i].IS_DEBUG <-- IS_DEBUG;
         for(var j = 0;j < 5;j++) intermedia_pem[i].State[j] <-- intermediaState[j];
         for(var j = 0;j < 5;j++) intermediaState[j] = intermedia_pem[i].out[j];
     }
@@ -285,6 +289,8 @@ template Ciphertext_Process(n){
        
        //update intermedia state
         intermedia_pem[i] = Permutation();
+        intermedia_pem[i].round <-- 6;
+        intermedia_pem[i].IS_DEBUG <-- IS_DEBUG;
         for(var j = 0;j < 5;j++) intermedia_pem[i].State[j] <-- intermediaState[j];
         for(var j = 0;j < 5;j++) intermediaState[j] = intermedia_pem[i].out[j];
     }
@@ -311,47 +317,7 @@ template Ciphertext_Process(n){
 }
 
 
-// template Finalize
-// Ascon finalization phase,an internal helper function
-// input State:
-// input Key: Ascon-128 key is of size 128 bits
-// output : tag(size 128 bits)
 
-// Ascon-128 finalization phase permutation round a = 12
-// Ascon-128 block size is of 8 bytes(rate = 8 bytes)
-// Ascon finalization phase also update its intermedia state
-// todo
-template Finalize(){
-    signal input State[5];
-    signal input Key;
-    signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
-
-    var intermediaState[5];
-    var DEBUG_FINALIZE_FLAG = IS_DEBUG;    //log debug info if flag == 1
-
-    // check input key is of length 128
-    component check_key = keylen();
-    check_key.key <== Key;
-
-    // init intermedia state
-    for(var i =0;i < 5;i++) intermediaState[i] = State[i];
-
-    // depart origin key into left and right part
-    var key[2];
-    component shift_key = ror();
-    shift_key.state <== Key;
-    shift_key.length <== 64;
-    key[0] = Key >> 64; // left half of the original key
-    key[1] = shift_key.out >> 64; // right half of the original key
-    
-
-    intermediaState[1] ^= (key[0]);
-    intermediaState[2] ^= (key[1]);
-
-    
-    //intermediaState[2] ^= (Key  )
-
-}
 
 // template Initialize
 // Ascon initialize step
@@ -377,6 +343,8 @@ template Initialize(){
     var IV;
     component shift[2];
     
+    shift[0] = ror();
+    shift[1] = ror();
     shift[0].state <== Key;
     shift[1].state <== nonce;
     shift[0].length <== 64;
@@ -416,4 +384,176 @@ template Initialize(){
     }
 }
 
-component main{public[round]} = Permutation();
+// template Ascon_Enc
+// parameter n:length of plaintext(bytes)
+// input Key:
+// input nonce:
+// input associateddata: TODO
+// input plaintext:
+// input IS_DEBUG:
+// output ciphertext:
+// output tag: TODO
+template Ascon_Enc(n){
+    signal input Key;
+    signal input nonce;
+    signal input plaintext[n];
+    signal input IS_DEBUG;
+    //signal input associateddata
+    signal output ct[n];
+    signal output tag;
+
+    //check key length is of size 128 bits
+    component check_key = keylen();
+    component check_nonce = keylen();
+    check_key.key <== Key;
+    check_nonce.key <== nonce;
+
+    //Ascon Initial phase
+    component Init = Initialize();
+    Init.Key <-- Key;
+    Init.nonce <-- nonce;
+    Init.IS_DEBUG <-- IS_DEBUG;
+
+    var intermediaState[5];
+    if(IS_DEBUG) log("Initial State phase");
+    for(var i = 0;i < 5;i++) intermediaState[i] = Init.State[i];
+
+    //Ascon Encryption phase
+    component enc = Plaintext_Process(n);
+    enc.IS_DEBUG <-- IS_DEBUG;
+    for(var i = 0;i < 5;i++) enc.State[i] <-- intermediaState[i];
+    for(var i = 0;i < n;i++) enc.plaintext[i] <-- plaintext[i];
+    for(var i = 0;i < n;i++) ct[i] <-- enc.ciphertext[i];
+
+    // component tag = Finalize();
+    //TODO
+    //
+}
+
+
+// template Ascon_Dec
+// parameter n:length of ciphertext(bytes)
+// input Key:
+// input nonce:
+// input associateddata: TODO
+// input plaintext:
+// input IS_DEBUG:
+// output plaintext:
+// output tag: TODO
+template Ascon_Dec(n){
+    signal input Key;
+    signal input nonce;
+    signal input ciphertext[n];
+    signal input IS_DEBUG;
+    signal input ct_tag;
+    //signal input associateddata
+    signal output pt[n];
+    signal output tag;
+
+    //check key length is of size 128 bits
+    component check_key = keylen();
+    component check_nonce = keylen();
+    check_key.key <== Key;
+    check_nonce.key <== nonce;
+
+    //Ascon Initial phase
+    component Init = Initialize();
+    Init.Key <-- Key;
+    Init.nonce <-- nonce;
+    Init.IS_DEBUG <-- IS_DEBUG;
+
+    var intermediaState[5];
+    if(IS_DEBUG) log("Initial State phase");
+    for(var i = 0;i < 5;i++) intermediaState[i] = Init.State[i];
+
+    //Ascon Encryption phase
+    component dec = Ciphertext_Process(n);
+    dec.IS_DEBUG <-- IS_DEBUG;
+    for(var i = 0;i < 5;i++) dec.State[i] <-- intermediaState[i];
+    for(var i = 0;i < n;i++) dec.ciphertext[i] <-- ciphertext[i];
+    for(var i = 0;i < n;i++) pt[i] <-- dec.plaintext[i];
+
+    // component calc_tag = Finalize();
+    // tag <-- calc.tag
+    // tag === ct_tag;
+}
+
+// template Associated_data
+// an Ascon internal helper function
+// parameter n:length of Associateddata(bytes)
+// input State:
+// input Key:
+// input Associateddata: 
+// output out:updated Ascon State
+
+// Ascon Associated_data has round b = 6
+template Associated_data(n){
+    signal input State[5];
+    signal input Key;
+    signal input Associateddata[n];
+    signal output out[5];
+
+    //TODO
+}
+
+
+// template Finalize
+// Ascon finalization phase,an internal helper function
+// input State:
+// input Key: Ascon-128 key is of size 128 bits
+// output : tag(size 128 bits)
+
+// Ascon-128 finalization phase permutation round a = 12
+// Ascon-128 block size is of 8 bytes(rate = 8 bytes)
+// Ascon finalization phase also update its intermedia state
+// todo
+template Finalize(){
+    signal input State[5];
+    signal input Key;
+    signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
+    signal output tag;
+
+    var intermediaState[5];
+    var DEBUG_FINALIZE_FLAG = IS_DEBUG;    //log debug info if flag == 1
+
+    // check input key is of length 128
+    component check_key = keylen();
+    check_key.key <== Key;
+
+    // init intermedia state
+    for(var i = 0;i < 5;i++) intermediaState[i] = State[i];
+
+    // depart origin key into left and right part
+    var key[2];
+    component shift_key = ror();
+    shift_key.state <== Key;
+    shift_key.length <== 64;
+    key[0] = Key >> 64; // left half of the original key
+    key[1] = shift_key.out >> 64; // right half of the original key
+    
+    // S XOR (0^64 || K || 0^128)
+    intermediaState[1] ^= (key[0]);
+    intermediaState[2] ^= (key[1]);
+
+    // update intermedia state: excute a = 12 rounds permutation
+    component finalize_pem = Permutation();
+    finalize_pem.IS_DEBUG <-- IS_DEBUG;
+    finalize_pem.round <-- 12;
+    for(var i = 0;i < 5;i++) finalize_pem.State[i] <-- intermediaState[i];
+
+    for(var i = 0;i < 5;i++) intermediaState[i] = finalize_pem.out[i];
+
+    // calculate output tag: XOR intermedia state last significant 128 bits with key
+    intermediaState[3] ^= key[0];
+    intermediaState[4] ^= key[1];
+    tag <-- (intermediaState[3] << 64) + intermediaState[4];
+
+    if(IS_DEBUG){
+        log("S[3]:",intermediaState[3]);
+        log("S[4]:",intermediaState[4]);
+        log("final tag:",tag);
+    }
+}
+
+
+component main{public[IS_DEBUG]} = Finalize();
