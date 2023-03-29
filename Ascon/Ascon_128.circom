@@ -100,7 +100,7 @@ template Permutation(){
     signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
     signal output out[5];
     // var round = 6;
-    var DEBUG_PERMUTATION_FLAG = IS_DEBUG; // log debug info if flag == 1
+    var DEBUG_PERMUTATION_FLAG = 0; // log debug info if flag == 1
 
     // check all State registers are of size 64 bits
     signal checkState[5];
@@ -174,7 +174,7 @@ template Permutation(){
             
         }
     }
-
+    
     // output intermedia state
     for(var i = 0;i < 5;i++) out[i] <-- intermediaState[i];
 }
@@ -196,7 +196,7 @@ template Plaintext_Process(n){
     signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
     signal output ciphertext[n];
 
-    var DEBUG_PLAINTEXT_FLAG = IS_DEBUG;   // log debug info if flag == 1
+    var DEBUG_PLAINTEXT_FLAG = 0;   // log debug info if flag == 1
 
     var intermediaState[5];
     var ct[n];
@@ -260,7 +260,7 @@ template Ciphertext_Process(n){
     signal input IS_DEBUG;    // log debug info if IS_DEBUG == 1
     signal output plaintext[n];
 
-    var DEBUG_CIPHERTEXT_FLAG = IS_DEBUG;  // log debug info if flag == 1
+    var DEBUG_CIPHERTEXT_FLAG = 1;  // log debug info if flag == 1
     var intermediaState[5];
     var pt[n];
     component intermedia_pem[n];
@@ -269,20 +269,20 @@ template Ciphertext_Process(n){
     var lastlen = 0;
     component pad_len = len();
     pad_len.in <== ciphertext[n-1];
-    lastlen = pad_len.out; //padding length(bytes)
-    var last_block = (ciphertext[n-1] << 8 * lastlen); // padding few bits '0'
-    if(DEBUG_CIPHERTEXT_FLAG) {
+    lastlen = 64 - pad_len.out; //padding length(bits)
+    var last_block = (ciphertext[n-1] << lastlen); // padding few bits '0'
+    /* if(DEBUG_CIPHERTEXT_FLAG) {
         log("last block:", ciphertext[n-1]);
-        log("last length:", lastlen);
+        log("pad length:", lastlen);
         log("padded block:", last_block);
-    }
+    } */
     
     // init intermedia state
     for(var i =0;i < 5;i++) intermediaState[i] = State[i];
 
     //process first t-1 blocks
     var Ci;
-    for(var i = 0;i < n;i++){
+    for(var i = 0;i < n - 1;i++){
        Ci = ciphertext[i];
        pt[i] = intermediaState[0] ^ Ci;
        intermediaState[0] = Ci;
@@ -295,23 +295,26 @@ template Ciphertext_Process(n){
         for(var j = 0;j < 5;j++) intermediaState[j] = intermedia_pem[i].out[j];
     }
 
-    /* // process last block
-    var ct_padding = 128 << (56 - 8 * lastlen); // ct_padding = 128 << 8 * (8 - lastlen - 1)
-    var c_mask = 18446744073709551615 >> (8 * lastlen); // 0xFFFF FFFF FFFF FFFF = 18446744073709551615
-    Ci = last_block >> (8 * lastlen);
-    pt[n-1] = Ci ^ (intermediaState[0] >> (8 * lastlen));
-    pt[n-1] = pt[n-1] >> (8 * lastlen);
+    // process last block
+    var ct_padding = 128 << (56 - lastlen); // ct_padding = 128 << 8 * (8 - lastlen - 1)
+    var c_mask = 18446744073709551615 >> lastlen; // 0xFFFF FFFF FFFF FFFF = 18446744073709551615
+    Ci = last_block;
+    pt[n-1] = Ci ^ intermediaState[0];
+    log("Ci", Ci);
+    log("intermediaState[0]", intermediaState[0]);
+    log("pt[n-1]:", pt[n-1]);
+    //pt[n-1] = pt[n-1] >> lastlen;
     intermediaState[0] = Ci ^ (intermediaState[0] & c_mask) ^ ct_padding;
     if(DEBUG_CIPHERTEXT_FLAG){
         log("ct_padding:", ct_padding);
         log("c_mask:", c_mask);
         log("Ci:", Ci);
         log("last plaintext:", pt[n-1]);
-    } */
+    }
 
     //output plaintext
     for(var i = 0;i < n;i++){
-        if(DEBUG_CIPHERTEXT_FLAG) log("Plaintext", i, pt[i]);
+        //if(DEBUG_CIPHERTEXT_FLAG) log("Plaintext", i, pt[i]);
         plaintext[i] <-- pt[i];
     }
 }
@@ -453,10 +456,10 @@ template Ascon_Dec(n){
     //signal output tag;
 
     //check key length is of size 128 bits
-    //component check_key = keylen();
-    //component check_nonce = keylen();
-    //check_key.key <== Key;
-    //check_nonce.key <== nonce;
+    /* component check_key = keylen();
+    component check_nonce = keylen();
+    check_key.key <== Key;
+    check_nonce.key <== nonce; */
 
     //Ascon Initial phase
     component Init = Initialize();
@@ -553,7 +556,7 @@ template Finalize(){
     signal output tag;
 
     var intermediaState[5];
-    var DEBUG_FINALIZE_FLAG = IS_DEBUG;    //log debug info if flag == 1
+    var DEBUG_FINALIZE_FLAG = 1;    //log debug info if flag == 1
 
     // check input key is of length 128
     //component check_key = keylen();
@@ -618,22 +621,6 @@ template Encrypt_with_associate_data(pt_len,asso_len){
 // template ascon encrypt
 // this template work without associated data
 // test all ascon functions correct
-
-/*
-
-input plaintext
-ct 0 5647439025829712524
-ct 1 15491740990023129785
-ct 2 14829341721340353458
-ct 3 15069444835503358622
-ct 4 3057183473229790115
-ct 5 6807858016697457348
-ct 6 15321001916064785207
-ct 7 13730222884538632949
-ct 8 2078820881980977588
-ct 9 9746548211320361175
-
-*/
 template Encrypt_without_associate_data(pt_len){
     signal input pt[pt_len];
     signal input Key;
@@ -642,13 +629,13 @@ template Encrypt_without_associate_data(pt_len){
     signal output tag;
 
     var intermediaState[5];
-    //var DEBUG_FLAG = 1;
+    var DEBUG_FLAG = 0;
 
     component enc = Ascon_Enc(pt_len);
     enc.Key <-- Key;
     enc.nonce <-- nonce;
     enc.plaintext <-- pt;
-    enc.IS_DEBUG <-- 1;
+    enc.IS_DEBUG <-- DEBUG_FLAG;
 
     for(var i = 0; i< pt_len;i++){
         ct[i] <-- enc.ct[i];
@@ -662,24 +649,6 @@ template Encrypt_without_associate_data(pt_len){
 // template ascon decrypt
 // this template work without associated data
 // test all ascon functions correct
-
-
-/* 
-
-output plaintext
-pt 0 9383393164308514233
-pt 1 17963167468181433617
-pt 2 4886746970379862863
-pt 3 4017053540049974332
-pt 4 15824156029553402712
-pt 5 5086391180707298578
-pt 6 18000333214773944713
-pt 7 3267465482706469569
-pt 8 18228012312943073856
-pt 9 0
-
-*/
-
 template Decrypt_without_associate_data(ct_len){
     signal input ct[ct_len];
     signal input Key;
@@ -696,17 +665,13 @@ template Decrypt_without_associate_data(ct_len){
     dec.nonce <-- nonce;
     dec.ciphertext <-- ct;
     dec.tag <-- tag;
-    dec.IS_DEBUG <-- 1;
+    dec.IS_DEBUG <-- 0;
 
     for(var i = 0; i < ct_len;i++){
         pt[i] <-- dec.pt[i];
         log("pt", i, pt[i]);
     }
-    //tag <-- enc.tag;
     log("tag", tag);
 }
 
-
-// template ascon decrypt
-
-component main{public[ct]} = Decrypt_without_associate_data(10);
+component main{public[ct, tag]} = Decrypt_without_associate_data(10);
