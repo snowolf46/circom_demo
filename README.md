@@ -34,7 +34,7 @@ make文件用于windows平台，Linux平台需要将最后的`del`命令修改�
 4. ~~[Done] 图的三着色问题（3Colors）~~
 5. ~~[Done] 迭代计算Hash - SHA256（Iteration_Hashing）~~
 6. ~~[Done] 迭代计算Hash - Poseidon（Iteration_Poseidon）~~
-7. [Ongoing] Ascon(NIST version)的circom实现
+7. [On-Hold] Ascon(NIST version)的circom实现
 8. [Ongoing] 国密SM2/3/4算法的circom实现
 9. [Todo] 祖冲之算法的circom实现
 10. [Todo] AES算法的circom实现
