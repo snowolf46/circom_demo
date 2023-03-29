@@ -139,6 +139,7 @@ template Permutation(){
         var T[5];
         for(var j = 0;j < 5;j++){
             // 0xFFFF FFFF FFFF FFFF = 18446744073709551615
+            // T[j]: filp all State[j] bits,then AND with State[j+1]
             T[j] = (intermediaState[j] ^ 18446744073709551615) & intermediaState[(j + 1) % 5];
         }
         for(var j = 0;j < 5;j++){
@@ -308,7 +309,7 @@ template Ciphertext_Process(n){
 
     //output plaintext
     for(var i = 0;i < n;i++){
-        //if(DEBUG_CIPHERTEXT_FLAG) log("Plaintext", i, pt[i]);
+        if(DEBUG_CIPHERTEXT_FLAG) log("Plaintext", i, pt[i]);
         plaintext[i] <-- pt[i];
     }
 }
@@ -340,6 +341,8 @@ template Initialize(){
     var IV;
     component shift[2];
     
+    // get most significant 64 bits and less significant 64 bits
+    // see template ror() to get more details
     shift[0] = ror();
     shift[1] = ror();
     shift[0].state <== Key;
@@ -389,7 +392,7 @@ template Initialize(){
 // input plaintext:
 // input IS_DEBUG:
 // output ciphertext:
-// output tag: TODO
+// output tag:
 template Ascon_Enc(n){
     signal input Key;
     signal input nonce;
@@ -398,12 +401,13 @@ template Ascon_Enc(n){
     signal output ct[n];
     signal output tag;
 
-    //Ascon Initial phase
+    // Ascon Initial phase
     component Init = Initialize();
     Init.Key <-- Key;
     Init.nonce <-- nonce;
     Init.IS_DEBUG <-- IS_DEBUG;
 
+    // intermedia state
     var intermediaState[5];
     if(IS_DEBUG) log("Initial State phase");
     for(var i = 0;i < 5;i++) intermediaState[i] = Init.State[i];
@@ -415,11 +419,13 @@ template Ascon_Enc(n){
     for(var i = 0;i < n;i++) enc.plaintext[i] <-- plaintext[i];
     for(var i = 0;i < n;i++) ct[i] <-- enc.ciphertext[i];
 
+    // calculate tag using intermedia state
     component calc_tag = Finalize();
     calc_tag.Key <-- Key;
     calc_tag.IS_DEBUG <-- IS_DEBUG;
     for(var i = 0;i < 5;i++) calc_tag.State[i] <-- intermediaState[i];
-
+    
+    //output tag
     tag <-- calc_tag.tag;
 }
 
@@ -457,11 +463,13 @@ template Ascon_Dec(n){
     for(var i = 0;i < n;i++) dec.ciphertext[i] <-- ciphertext[i];
     for(var i = 0;i < n;i++) pt[i] <-- dec.plaintext[i];
 
+    // calculate tag using intermedia state
     component calc_tag = Finalize();
     calc_tag.Key <--  Key;
     calc_tag.IS_DEBUG <-- IS_DEBUG;
     for(var i = 0;i < 5;i++) calc_tag.State[i] <-- intermediaState[i];
 
+    //check final tag is well form
     calc_tag.tag === tag;
     //tag <-- calc.tag;
     //tag === ct_tag;
@@ -522,7 +530,7 @@ template Associated_data(n){
 // Ascon finalization phase,an internal helper function
 // input State:
 // input Key: Ascon-128 key is of size 128 bits
-// output : tag(size 128 bits)
+// output: tag(size 128 bits)
 
 // Ascon-128 finalization phase permutation round a = 12
 // Ascon-128 block size is of 8 bytes(rate = 8 bytes)
@@ -590,6 +598,26 @@ template Encrypt_with_associate_data(pt_len,asso_len){
 
     //TODO
 }
+
+// template ascon decrypt
+// this template work with associate data
+// test all ascon functions correct
+// TODO
+template Encrypt_with_associate_data(pt_len,asso_len){
+    signal input ct[pt_len];
+    signal input associated_data[asso_len];
+    //signal input DEBUG_FLAG;
+    signal input Key;
+    signal input nonce;
+    signal output pt[pt_len];
+    signal output tag;
+
+    var intermediaState[5];
+    var DEBUG_FLAG = 1;
+
+    //TODO
+}
+
 
 
 // template ascon encrypt
