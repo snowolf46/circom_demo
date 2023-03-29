@@ -11,7 +11,7 @@ pragma circom 2.1.4;
     ================================
 */
 
-// ===== some help function =====
+// =============== some help function ===============
 
 // template Bit4
 // Enforce that 0 <= in <= 15
@@ -89,7 +89,7 @@ template keylen(){
     zero * zero === 0;
 }
 
-// ===== some help function =====
+// =============== some help function ===============
 
 // template Permutaion
 // input State: Ascon initial/intermedia state, include 5 register of size 64-bits
@@ -179,8 +179,6 @@ template Permutation(){
     for(var i = 0;i < 5;i++) out[i] <-- intermediaState[i];
 }
 
-
-
 // template Plaintext_Process
 // parameter n: Numbers of plaintext blocks
 // input State: Ascon intermedia state
@@ -189,7 +187,6 @@ template Permutation(){
 
 // Ascon-128 block size is of 8 bytes(rate = 8 bytes)
 // Assume plaintext has been properly preprocessed(the last block of plaintext has been padded)
-
 template Plaintext_Process(n){
     signal input State[5];
     signal input plaintext[n];
@@ -243,8 +240,6 @@ template Plaintext_Process(n){
     }
 }
 
-
-
 // template Ciphertext_Process
 // parameter n: Numbers of ciphertext blocks
 // input State: Ascon intermedia state
@@ -253,7 +248,6 @@ template Plaintext_Process(n){
 
 // Ascon-128 block size is of 8 bytes(rate = 8 bytes)
 // Assume plaintext has been properly preprocessed(the last block of plaintext has been padded)
-
 template Ciphertext_Process(n){
     signal input State[5];
     signal input ciphertext[n];
@@ -271,12 +265,12 @@ template Ciphertext_Process(n){
     pad_len.in <== ciphertext[n-1];
     lastlen = 64 - pad_len.out; //padding length(bits)
     var last_block = (ciphertext[n-1] << lastlen); // padding few bits '0'
-    /* if(DEBUG_CIPHERTEXT_FLAG) {
+    if(DEBUG_CIPHERTEXT_FLAG) {
         log("last block:", ciphertext[n-1]);
         log("pad length:", lastlen);
         log("padded block:", last_block);
-    } */
-    
+    } 
+
     // init intermedia state
     for(var i =0;i < 5;i++) intermediaState[i] = State[i];
 
@@ -404,12 +398,6 @@ template Ascon_Enc(n){
     signal output ct[n];
     signal output tag;
 
-    //check key length is of size 128 bits
-    //component check_key = keylen();
-    //component check_nonce = keylen();
-    //check_key.key <== Key;
-    //check_nonce.key <== nonce;
-
     //Ascon Initial phase
     component Init = Initialize();
     Init.Key <-- Key;
@@ -444,22 +432,13 @@ template Ascon_Enc(n){
 // input plaintext:
 // input IS_DEBUG:
 // output plaintext:
-// output tag: TODO
 template Ascon_Dec(n){
     signal input Key;
     signal input nonce;
     signal input ciphertext[n];
     signal input IS_DEBUG;
     signal input tag;
-    //signal input associateddata
     signal output pt[n];
-    //signal output tag;
-
-    //check key length is of size 128 bits
-    /* component check_key = keylen();
-    component check_nonce = keylen();
-    check_key.key <== Key;
-    check_nonce.key <== nonce; */
 
     //Ascon Initial phase
     component Init = Initialize();
@@ -548,7 +527,6 @@ template Associated_data(n){
 // Ascon-128 finalization phase permutation round a = 12
 // Ascon-128 block size is of 8 bytes(rate = 8 bytes)
 // Ascon finalization phase also update its intermedia state
-// todo
 template Finalize(){
     signal input State[5];
     signal input Key;
@@ -557,10 +535,6 @@ template Finalize(){
 
     var intermediaState[5];
     var DEBUG_FINALIZE_FLAG = 1;    //log debug info if flag == 1
-
-    // check input key is of length 128
-    //component check_key = keylen();
-    //check_key.key <== Key;
 
     // init intermedia state
     for(var i = 0;i < 5;i++) intermediaState[i] = State[i];
