@@ -33,8 +33,8 @@ make文件用于windows平台，Linux平台需要将最后的`del`命令修改�
 3. ~~[Done] 哈密顿回路（Hamiltonian_Cycle）~~
 4. ~~[Done] 图的三着色问题（3Colors）~~
 5. ~~[Done] 迭代计算Hash - SHA256（Iteration_Hashing）~~
-6. ~~[Done] 迭代计算Hash - Poseidon（Iteration_Poseidon） ~~
-7. ~~[Ongoing] Ascon(NIST version)的circom实现~~
+6. ~~[Done] 迭代计算Hash - Poseidon（Iteration_Poseidon）~~
+7. [Ongoing] Ascon(NIST version)的circom实现
 8. [Todo] 国密SM2/3/4算法的circom实现
 9. [Todo] 祖冲之算法的circom实现
 10. [Todo] AES算法的circom实现
@@ -50,5 +50,5 @@ make文件用于windows平台，Linux平台需要将最后的`del`命令修改�
 2. node命令执行失败通常意味着input文件中的输入不满足约束条件（此时会报错），要么修改电路中的约束条件，要么修改input中对应的输入
 3. power参数不宜设置过大，因为`phase2`命令会占据大量CPU（执行该命令后CPU利用率基本会维持在99%以上，直至计算完毕），power越大意味着计算时间越久，因此需要将该参数设置为最接近约束数量的值
 4. 如果需要查看中间结果，则把最后的del命令删除
-5. 计算beacon中的hash_power也不宜设置过大，否则也会导致计算过慢，计算公式为$time = 2^{hash_power}$，Makefile中默认设置=hash_power=10，有需要可自行更改
+5. 计算beacon中的hash_power也不宜设置过大，否则也会导致计算过慢，计算公式为$time = 2^{hash_power}$，Makefile中默认设置hash_power=10，有需要可自行更改
 
