@@ -295,10 +295,7 @@ template Ciphertext_Process(n){
     var c_mask = 18446744073709551615 >> lastlen; // 0xFFFF FFFF FFFF FFFF = 18446744073709551615
     Ci = last_block;
     pt[n-1] = Ci ^ intermediaState[0];
-    log("Ci", Ci);
-    log("intermediaState[0]", intermediaState[0]);
-    log("pt[n-1]:", pt[n-1]);
-    //pt[n-1] = pt[n-1] >> lastlen;
+    pt[n-1] = pt[n-1] >> lastlen;
     intermediaState[0] = Ci ^ (intermediaState[0] & c_mask) ^ ct_padding;
     if(DEBUG_CIPHERTEXT_FLAG){
         log("ct_padding:", ct_padding);
@@ -313,9 +310,6 @@ template Ciphertext_Process(n){
         plaintext[i] <-- pt[i];
     }
 }
-
-
-
 
 // template Initialize
 // Ascon initialize step
@@ -342,7 +336,7 @@ template Initialize(){
     component shift[2];
     
     // get most significant 64 bits and less significant 64 bits
-    // see template ror() to get more details
+    // see template ror() comment to get more details
     shift[0] = ror();
     shift[1] = ror();
     shift[0].state <== Key;
@@ -354,7 +348,7 @@ template Initialize(){
     _key[1] = shift[0].out >> 64;
     _nonce[0] = nonce >> 64;
     _nonce[1] = shift[1].out >> 64;
-    IV = 9241399655273594880;
+    IV = 9241399655273594880; //Ascon-128 IV = 0x80400c0600000000,which is 9241399655273594880 in decimal
 
     intermediaState[0] = _key[0];
     intermediaState[1] = _key[1];
@@ -471,8 +465,6 @@ template Ascon_Dec(n){
 
     //check final tag is well form
     calc_tag.tag === tag;
-    //tag <-- calc.tag;
-    //tag === ct_tag;
 }
 
 // template Associated_data
